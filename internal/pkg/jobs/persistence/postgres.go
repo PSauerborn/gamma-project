@@ -138,8 +138,12 @@ func (db *PostgresPersistence) UpdateJobMeta(jobId uuid.UUID, meta map[string]in
 // db function used to create a new job
 func (db *PostgresPersistence) CreateJob(j jobs.Job) (uuid.UUID, error) {
 	log.Debug(fmt.Sprintf("creating new job with values %+v", j))
-
-	id := uuid.New()
+	// generate new uuid for job and record current time in UTC format
+	id, now := uuid.New(), time.Now().UTC()
+	// add default values for fields into metadata instance
+	j.Meta["created"] = now
+	j.Meta["attachments"] = []string{}
+	// convert metadata to JSON format
 	meta, err := json.Marshal(j.Meta)
 	if err != nil {
 		log.Error(fmt.Errorf("unable to convert metadata to JSON: %+v", err))
@@ -149,7 +153,7 @@ func (db *PostgresPersistence) CreateJob(j jobs.Job) (uuid.UUID, error) {
 	query := `INSERT INTO jobs(id,name,due,meta,state,created)
 	VALUES($1,$2,$3,$4,$5,$6)`
 	_, err = db.Session.Exec(context.Background(), query, id, j.Name, j.Due, meta, jobs.Created,
-		time.Now().UTC())
+		now)
 	if err != nil {
 		log.Error(fmt.Errorf("unable to insert job into database: %+v", err))
 		return id, err

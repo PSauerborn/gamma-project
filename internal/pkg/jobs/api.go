@@ -100,6 +100,8 @@ func CreateJobHandler(ctx *gin.Context) {
 			"message": "Invalid request body"})
 		return
 	}
+	// add job creator to metadata
+	j.Meta["creator"] = ctx.MustGet("uid").(string)
 	// create new job in persistence layer
 	id, err := persistence.CreateJob(j)
 	if err != nil {
