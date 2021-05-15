@@ -38,6 +38,26 @@ func GetUserRolesHandler(ctx *gin.Context) {
 
 func SetUserRolesHandler(ctx *gin.Context) {
 	log.Info("received request to retrieve set roles")
+	uid := ctx.MustGet("uid").(string)
+
+	role, err := persistence.GetUserRole(uid)
+	if err != nil {
+		log.Error(fmt.Errorf("unable to retrieve user role: %+v", err))
+		status := http.StatusInternalServerError
+		ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+			"message": "Internal server error"})
+		return
+	}
+
+	// only allow admin users to set roles in database
+	if role < Admin {
+		log.Warn(fmt.Sprintf("received request to set roles without permissions from user %s", uid))
+		status := http.StatusForbidden
+		ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+			"message": "Forbidden"})
+		return
+	}
+
 	var r struct {
 		Uid      string `json:"uid" binding:"required"`
 		UserRole Role   `json:"role" binding:"required"`

@@ -23,7 +23,7 @@ func (db *PostgresPersistence) GetUserRole(uid string) (roles.Role, error) {
 		log.Error(fmt.Errorf("unable to scan data into local variables: %+v", err))
 		switch err {
 		case pgx.ErrNoRows:
-			return roles.StandardUser, nil
+			return roles.Standard, nil
 		default:
 			return r, err
 		}
