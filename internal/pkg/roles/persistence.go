@@ -3,15 +3,15 @@ package roles
 type Role int
 
 func (r Role) String() string {
-	return [...]string{"Standard User", "Clerk", "Planner", "Admin"}[r]
+	return [...]string{"Standard User", "Clerk", "Planner", "Admin"}[r-1]
 }
 
 func (r Role) IsValid() bool {
-	return r > 0 && r < 4
+	return r >= 1 && r <= 4
 }
 
 const (
-	StandardUser Role = iota
+	StandardUser Role = iota + 1
 	Clerk
 	Planner
 	Admin

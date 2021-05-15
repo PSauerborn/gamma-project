@@ -3,6 +3,7 @@ package jobs
 import (
 	"github.com/PSauerborn/gamma-project/internal/pkg/jobs"
 	db "github.com/PSauerborn/gamma-project/internal/pkg/jobs/persistence"
+	"github.com/PSauerborn/gamma-project/internal/pkg/roles"
 	"github.com/PSauerborn/gamma-project/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -17,15 +18,18 @@ func NewJobsAPI(p jobs.Persistence) *gin.Engine {
 
 	r.GET("/jobs/health_check", jobs.HealthCheckHandler)
 	// add request handlers to retrieve jobs
-	r.GET("/jobs/list/all", jobs.ListJobsHandler)
+	r.GET("/jobs/list/all", utils.RoleMiddelware(roles.Planner, "http://localhost:10313"),
+		jobs.ListJobsHandler)
 	r.GET("/jobs/list", jobs.ListUserJobsHandler)
 	r.GET("/jobs/:jobId", jobs.GetJobHandler)
 
 	// add request handler to create new jobs
-	r.POST("/jobs/new", jobs.CreateJobHandler)
+	r.POST("/jobs/new", utils.RoleMiddelware(roles.Clerk, "http://localhost:10313"),
+		jobs.CreateJobHandler)
 	// add request handlers to modify existing jobs
 	r.PATCH("/jobs/:jobId/state", jobs.AlterJobStateHandler)
-	r.PATCH("/jobs/:jobId/assign", jobs.AssignJobHandler)
+	r.PATCH("/jobs/:jobId/assign", utils.RoleMiddelware(roles.Planner, "http://localhost:10313"),
+		jobs.AssignJobHandler)
 	r.PATCH("/jobs/:jobId/meta", jobs.PatchJobMetaHandler)
 	r.DELETE("/jobs/:jobId", jobs.DeleteJobHandler)
 	return r
