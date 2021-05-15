@@ -85,6 +85,43 @@ func (db *PostgresPersistence) ListJobs() ([]jobs.Job, error) {
 	return results, nil
 }
 
+func (db *PostgresPersistence) ListUserJobs(uid string) ([]jobs.Job, error) {
+	log.Debug(fmt.Sprintf("listing jobs for user %s...", uid))
+	results := []jobs.Job{}
+
+	query := `SELECT j.id,j.name,j.due,j.meta,j.state,j.created,j.assigned FROM jobs j
+	INNER JOIN assigned_jobs a ON a.id = j.id WHERE a.uid=$1`
+	rows, err := db.Session.Query(context.Background(), query, uid)
+	if err != nil {
+		log.Error(fmt.Errorf("unable to retrieve data from database: %+v", err))
+		switch err {
+		case pgx.ErrNoRows:
+			return results, nil
+		default:
+			return results, err
+		}
+	}
+
+	for rows.Next() {
+		var (
+			j    jobs.Job
+			meta []byte
+		)
+		if err := rows.Scan(&j.JobId, &j.Name, &j.Due, &meta, &j.State,
+			&j.Created, &j.Assigned); err != nil {
+			log.Error(fmt.Errorf("unable to scan data into local variables: %+v", err))
+			continue
+		}
+		// convert metadata into JSON and add to struct
+		if err := json.Unmarshal(meta, &j.Meta); err != nil {
+			log.Error(fmt.Errorf("unable to parse JSON metadata: %+v", err))
+			continue
+		}
+		results = append(results, j)
+	}
+	return results, nil
+}
+
 func (db *PostgresPersistence) UpdateJobMeta(jobId uuid.UUID, meta map[string]interface{}) error {
 	log.Debug(fmt.Sprintf("updating metadata for %s with %+v...", jobId, meta))
 	metaJSON, err := json.Marshal(meta)

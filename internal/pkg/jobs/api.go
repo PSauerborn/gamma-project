@@ -40,6 +40,23 @@ func ListJobsHandler(ctx *gin.Context) {
 		"jobs": jobs})
 }
 
+// API handler used to list all jobs
+func ListUserJobsHandler(ctx *gin.Context) {
+	log.Info("received request to list jobs for user")
+	uid := ctx.MustGet("uid").(string)
+	// get all jobs from persistence layer
+	jobs, err := persistence.ListUserJobs(uid)
+	if err != nil {
+		log.Error(fmt.Errorf("unable to retrieve jobs: %+v", err))
+		status := http.StatusInternalServerError
+		ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+			"message": "Internal server error"})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"http_code": http.StatusOK,
+		"jobs": jobs})
+}
+
 // API handler used to retrieve a job with given job ID
 func GetJobHandler(ctx *gin.Context) {
 	log.Info("received request to retrieve job")

@@ -12,6 +12,7 @@ var ErrJobDoesNotExists = errors.New("cannot find job with specified ID")
 type Persistence interface {
 	GetJob(jobId uuid.UUID) (Job, error)
 	ListJobs() ([]Job, error)
+	ListUserJobs(uid string) ([]Job, error)
 	CreateJob(job Job) (uuid.UUID, error)
 	AssignJob(jobId uuid.UUID, uid string) error
 	AlterJobState(jobId uuid.UUID, state int) error

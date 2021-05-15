@@ -13,10 +13,12 @@ func NewJobsAPI(p jobs.Persistence) *gin.Engine {
 	jobs.SetPersistence(p)
 	// generate new instance of gin router and assign routes
 	r := gin.Default()
+	r.Use(utils.UserHeaderMiddleware())
 
 	r.GET("/jobs/health_check", jobs.HealthCheckHandler)
 	// add request handlers to retrieve jobs
 	r.GET("/jobs/list/all", jobs.ListJobsHandler)
+	r.GET("/jobs/list", jobs.ListUserJobsHandler)
 	r.GET("/jobs/:jobId", jobs.GetJobHandler)
 
 	// add request handler to create new jobs
