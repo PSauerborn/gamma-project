@@ -10,11 +10,26 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var persistence Persistence
+var (
+	// define global for persistence layer
+	persistence Persistence
+	// define global to store service settings
+	serviceConfig ServiceConfig
+)
+
+type ServiceConfig struct {
+	FilestoreHost string
+	RolesAPIHost  string
+}
 
 // function used to set global persistence instance
 func SetPersistence(p Persistence) {
 	persistence = p
+}
+
+// function used to set global service configsettings
+func SetConfig(cfg ServiceConfig) {
+	serviceConfig = cfg
 }
 
 // API handler used to serve health check routes
@@ -298,4 +313,80 @@ func PatchJobMetaHandler(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{"http_code": http.StatusOK,
 		"message": "Successfully patched job metadata"})
+}
+
+type FileUpload struct {
+	FileName string                 `json:"file_name"`
+	Meta     map[string]interface{} `json:"meta"`
+	Content  string                 `json:"content"`
+}
+
+func AddJobAttachmentHandler(ctx *gin.Context) {
+	log.Info("received request to add attachment to job")
+	jobId, err := ParseAndValidateJobId(ctx, "jobId")
+	if err != nil {
+		log.Error(fmt.Errorf("unable to validate job ID: %+v", err))
+		switch err {
+		case ErrInvalidJobID:
+			status := http.StatusBadRequest
+			ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+				"message": "Invalid job ID"})
+		case ErrJobDoesNotExists:
+			status := http.StatusNotFound
+			ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+				"message": "Cannot find job with specified ID"})
+		default:
+			status := http.StatusInternalServerError
+			ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+				"message": "Internal server error"})
+		}
+		return
+	}
+	// extract file from request and parse details
+	file, header, err := ctx.Request.FormFile("attachment")
+	if err != nil {
+		log.Error(fmt.Errorf("unable to extract file from request: %+v", err))
+		status := http.StatusBadRequest
+		ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+			"message": "Invalid file upload"})
+		return
+	}
+
+	// convert file to bytes
+	bytes, err := utils.FileformToBytes(file)
+	if err != nil {
+		log.Error(fmt.Errorf("unable to convert file form to bytes: %+v", err))
+		status := http.StatusBadRequest
+		ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+			"message": "Internal server error"})
+		return
+	}
+
+	upload := FileUpload{
+		FileName: header.Filename,
+		Meta: map[string]interface{}{
+			"job_id":   jobId,
+			"uploader": ctx.MustGet("uid").(string),
+		},
+		Content: utils.BytesToBase64(bytes),
+	}
+	// upload file to filestore API and retrieve file ID
+	uploadId, err := AddFileToFilestore(upload, serviceConfig.FilestoreHost)
+	if err != nil {
+		log.Error(fmt.Errorf("unable to add file to filestore: %+v", err))
+		status := http.StatusInternalServerError
+		ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+			"message": "Internal server error"})
+		return
+	}
+	// add file ID to attachments metadata for job
+	if err := AddJobAttachment(jobId, uploadId); err != nil {
+		log.Error(fmt.Errorf("unable to add attachment to job metadata: %+v", err))
+		status := http.StatusInternalServerError
+		ctx.AbortWithStatusJSON(status, gin.H{"http_code": status,
+			"message": "Internal server error"})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"http_code": http.StatusOK,
+		"message": "Successfully uploaded attachment"})
 }

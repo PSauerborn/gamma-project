@@ -10,7 +10,7 @@ import (
 
 var cfg = utils.NewConfigMapWithValues(map[string]string{
 	"listen_port":  "10314",
-	"postgres_url": "postgres://postgres:development@localhost:5432/gamma_project",
+	"postgres_url": "postgres://postgres:postgres-dev@192.168.99.100:5432/gamma_project",
 	"log_level":    "DEBUG",
 	"storage_path": "./data",
 })

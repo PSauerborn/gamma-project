@@ -12,6 +12,7 @@ var cfg = utils.NewConfigMapWithValues(map[string]string{
 	"listen_address": "0.0.0.0",
 	"listen_port":    "10312",
 	"roles_api_host": "http://localhost:10313",
+	"filestore_host": "http://localhost:10314",
 	"postgres_url":   "postgres://postgres:postgres-dev@192.168.99.100:5432/gamma_project",
 })
 
@@ -29,6 +30,8 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("received invalid listen port %s", cfg.Get("listen_port")))
 	}
+
+	config := jobs.NewServiceConfig(cfg.Get("filestore_host"), cfg.Get("roles_api_host"))
 	// generate new API instance and run on specified port
-	jobs.NewJobsAPI(db, cfg.Get("roles_api_host")).Run(fmt.Sprintf(":%d", listenPort))
+	jobs.NewJobsAPI(db, config).Run(fmt.Sprintf(":%d", listenPort))
 }
